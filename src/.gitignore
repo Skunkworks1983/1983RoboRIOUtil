@@ -1,0 +1,77 @@
+# Compiled source #
+###################
+*.com
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.d
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store*
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# WORKBENCH #
+#############
+*.metadata
+*.plugins
+
+# Compile Folders #
+###################
+PPC603gnu
+PPC603diab
+PPC32gnu
+PPC32diab
+Debug
+Release
+*.out
+
+# ucpp + sublime #
+##################
+.ucpp
+*sublime*
+
+# Remote Systems Files #
+########################
+RemoteSystemsTempFiles/*
+
+# Doxygen #
+###########
+docs
+
+# Subfolder Gitignore #
+#######################
+*/.gitignore
+
+# Project Files #
+#################
+.project
+.wrproject
+.cproject
+.wrmakefile
+
+# SimpleTemplate #
+##################
+SimpleTemplate
