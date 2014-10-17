@@ -8,7 +8,7 @@
 #define PID1983Controller_H_
 
 #include "Base.h"
-#include "semLib.h"
+#include "pthread.h"
 #include "Controller.h"
 #include "LiveWindow/LiveWindow.h"
 
@@ -87,8 +87,8 @@ private:
 	
 	double m_lastTick;
 	
-	SEM_ID m_semaphore;
-	
+	pthread_mutex_t m_mutex;
+
 	PIDSource *m_pidInput;
 	PIDOutput *m_pidOutput;
 	Notifier *m_controlLoop;

@@ -1,15 +1,14 @@
 #include "AnalogPot.h"
 
-#include "AnalogChannel.h"
+#include "AnalogInput.h" // was AnalogChannel
 #include "LiveWindow/LiveWindow.h"
 
 #include "../Time.h"
 
-void AnalogPot::InitAnalogPot(uint8_t moduleNumber, uint32_t channel) {
-	backend = new AnalogChannel(moduleNumber, channel);
+void AnalogPot::InitAnalogPot(uint32_t channel) {
+	backend = new AnalogInput(channel);
 
-	LiveWindow::GetInstance()->AddSensor("Encoder", backend->GetModuleNumber(),
-			backend->GetChannel(), this);
+	LiveWindow::GetInstance()->AddSensor("Encoder",	backend->GetChannel(), this);
 
 	// Default to just voltage
 	this->a = 0;
@@ -26,12 +25,9 @@ void AnalogPot::InitAnalogPot(uint8_t moduleNumber, uint32_t channel) {
 	pAverageRate = 0.0;
 }
 
-AnalogPot::AnalogPot(uint8_t moduleNumber, uint32_t channel) {
-	InitAnalogPot(moduleNumber, channel);
-}
 
 AnalogPot::AnalogPot(uint32_t channel) {
-	InitAnalogPot(GetDefaultAnalogModule(), channel);
+	InitAnalogPot(channel);
 }
 
 void AnalogPot::setVoltageToAngle(float a, float b, float c) {

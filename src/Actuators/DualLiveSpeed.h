@@ -32,7 +32,7 @@ public:
 	 */
 	DualLiveSpeed(SpeedController *aA, SpeedController *bB = NULL, bool reverseB = false);
 	virtual ~DualLiveSpeed();
-	virtual void Set(float f, UINT8 syncGroup = 0);
+	virtual void Set(float f, uint8_t syncGroup = 0);
 	virtual void PIDWrite(float f);
 	virtual float Get();
 	virtual void Disable();

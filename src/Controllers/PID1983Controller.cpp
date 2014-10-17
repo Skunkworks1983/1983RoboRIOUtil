@@ -10,8 +10,9 @@
 #include "PIDSource.h"
 #include "PIDOutput.h"
 #include "Timer.h"
-#include <math.h>
-#include "Synchronized.h"
+#include <cmath>
+#include "HAL/cpp/Synchronized.hpp"
+#include <pthread.h>
 
 static const char *kP = "p";
 static const char *kI = "i";
@@ -31,8 +32,7 @@ static const char *kEnabled = "enabled";
  * integral and differental terms. The default is 50ms.
  */
 PID1983Controller::PID1983Controller(float Kp, float Ki, float Kd,
-		PIDSource *source, PIDOutput *output, float period) :
-	m_semaphore(0) {
+		PIDSource *source, PIDOutput *output, float period) {
 	Initialize(Kp, Ki, Kd, 0.0f, source, output, period);
 	Timer::GetFPGATimestamp();
 }
@@ -49,15 +49,13 @@ PID1983Controller::PID1983Controller(float Kp, float Ki, float Kd,
  */
 PID1983Controller::PID1983Controller(float Kp, float Ki, float Kd, float Kf,
 		PIDSource *source, PIDOutput *output, float period) :
-	m_semaphore(0) {
+			 m_mutex(PTHREAD_MUTEX_INITIALIZER){
 	Initialize(Kp, Ki, Kd, Kf, source, output, period);
 }
 
 void PID1983Controller::Initialize(float Kp, float Ki, float Kd, float Kf,
 		PIDSource *source, PIDOutput *output, float period) {
 	m_table = NULL;
-
-	m_semaphore = semMCreate(SEM_Q_PRIORITY);
 
 	m_controlLoop = new Notifier(PID1983Controller::CallCalculate, this);
 
@@ -103,7 +101,7 @@ void PID1983Controller::Initialize(float Kp, float Ki, float Kd, float Kf,
  * Free the PID object
  */
 PID1983Controller::~PID1983Controller() {
-	semFlush(m_semaphore);
+	pthread_mutex_destroy(&m_mutex);
 	delete m_controlLoop;
 }
 
@@ -128,14 +126,18 @@ void PID1983Controller::Calculate() {
 	bool enabled;
 	PIDSource *pidInput;
 
-	CRITICAL_REGION(m_semaphore)
-	{
-		if (m_pidInput == 0) return;
-		if (m_pidOutput == 0) return;
+	pthread_mutex_lock(&m_mutex);
+		if (m_pidInput == 0) {
+			pthread_mutex_unlock(&m_mutex);
+			return;
+		}
+		if (m_pidOutput == 0) {
+			pthread_mutex_unlock(&m_mutex);
+			return;
+		}
 		enabled = m_enabled;
 		pidInput = m_pidInput;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (enabled) {
 		double cTime = Timer::GetFPGATimestamp();
@@ -148,7 +150,7 @@ void PID1983Controller::Calculate() {
 			PIDOutput *pidOutput;
 
 			{
-				Synchronized sync(m_semaphore);
+				Synchronized sync(&m_mutex);
 				m_error = m_setpoint - input;
 				if (m_continuous) {
 					if (fabs(m_error) > (m_maximumInput - m_minimumInput) / 2) {
@@ -210,13 +212,11 @@ void PID1983Controller::Calculate() {
  * @param d Differential coefficient
  */
 void PID1983Controller::SetPID(float p, float i, float d) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_P = p;
 		m_I = i;
 		m_D = d;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (m_table != NULL) {
 		m_table->PutNumber("p", m_P);
@@ -234,14 +234,12 @@ void PID1983Controller::SetPID(float p, float i, float d) {
  * @param f Feed forward coefficient
  */
 void PID1983Controller::SetPID(float p, float i, float d, float f) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_P = p;
 		m_I = i;
 		m_D = d;
 		m_F = f;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (m_table != NULL) {
 		m_table->PutNumber("p", m_P);
@@ -256,11 +254,9 @@ void PID1983Controller::SetPID(float p, float i, float d, float f) {
  * @return proportional coefficient
  */
 float PID1983Controller::GetP() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		return m_P;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -268,11 +264,9 @@ float PID1983Controller::GetP() {
  * @return integral coefficient
  */
 float PID1983Controller::GetI() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		return m_I;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -280,11 +274,9 @@ float PID1983Controller::GetI() {
  * @return differential coefficient
  */
 float PID1983Controller::GetD() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		return m_D;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -292,11 +284,9 @@ float PID1983Controller::GetD() {
  * @return Feed forward coefficient
  */
 float PID1983Controller::GetF() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		return m_F;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -306,11 +296,9 @@ float PID1983Controller::GetF() {
  */
 float PID1983Controller::Get() {
 	float result;
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		result = m_result;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 	return result;
 }
 
@@ -322,12 +310,9 @@ float PID1983Controller::Get() {
  * @param continuous Set to true turns on continuous, false turns off continuous
  */
 void PID1983Controller::SetContinuous(bool continuous) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_continuous = continuous;
-	}
-	END_REGION;
-
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -337,12 +322,10 @@ void PID1983Controller::SetContinuous(bool continuous) {
  * @param maximumInput the maximum value expected from the output
  */
 void PID1983Controller::SetInputRange(float minimumInput, float maximumInput) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_minimumInput = minimumInput;
 		m_maximumInput = maximumInput;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	SetSetpoint(m_setpoint);
 }
@@ -354,12 +337,10 @@ void PID1983Controller::SetInputRange(float minimumInput, float maximumInput) {
  * @param maximumOutput the maximum value to write to the output
  */
 void PID1983Controller::SetOutputRange(float minimumOutput, float maximumOutput) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_minimumOutput = minimumOutput;
 		m_maximumOutput = maximumOutput;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /**
@@ -367,23 +348,19 @@ void PID1983Controller::SetOutputRange(float minimumOutput, float maximumOutput)
  * @param setpoint the desired setpoint
  */
 void PID1983Controller::SetSetpoint(float setpoint) {
-	CRITICAL_REGION(m_semaphore)
-	{
-		if (m_maximumInput> m_minimumInput)
-		{
-			if (setpoint> m_maximumInput)
-			m_setpoint = m_maximumInput;
-			else if (setpoint < m_minimumInput)
-			m_setpoint = m_minimumInput;
-			else
+	pthread_mutex_lock(&m_mutex);
+		if (m_maximumInput> m_minimumInput) {
+			if (setpoint> m_maximumInput) {
+				m_setpoint = m_maximumInput;
+			} else if (setpoint < m_minimumInput) {
+				m_setpoint = m_minimumInput;
+			} else {
+				m_setpoint = setpoint;
+			}
+		} else {
 			m_setpoint = setpoint;
 		}
-		else
-		{
-			m_setpoint = setpoint;
-		}
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (m_table != NULL) {
 		m_table->PutNumber("setpoint", m_setpoint);
@@ -396,11 +373,9 @@ void PID1983Controller::SetSetpoint(float setpoint) {
  */
 float PID1983Controller::GetSetpoint() {
 	float setpoint;
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		setpoint = m_setpoint;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 	return setpoint;
 }
 
@@ -410,11 +385,9 @@ float PID1983Controller::GetSetpoint() {
  */
 float PID1983Controller::GetError() {
 	float error;
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		error = m_setpoint - m_pidInput->PIDGet();
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 	return error;
 }
 
@@ -424,12 +397,10 @@ float PID1983Controller::GetError() {
  * @param percentage error which is tolerable
  */
 void PID1983Controller::SetTolerance(float percent) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_toleranceType = kPercentTolerance;
 		m_tolerance = percent;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /*
@@ -438,12 +409,10 @@ void PID1983Controller::SetTolerance(float percent) {
  * @param percentage error which is tolerable
  */
 void PID1983Controller::SetPercentTolerance(float percent) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_toleranceType = kPercentTolerance;
 		m_tolerance = percent;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /*
@@ -452,12 +421,10 @@ void PID1983Controller::SetPercentTolerance(float percent) {
  * @param percentage error which is tolerable
  */
 void PID1983Controller::SetAbsoluteTolerance(float absTolerance) {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_toleranceType = kAbsoluteTolerance;
 		m_tolerance = absTolerance;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 /*
@@ -469,21 +436,23 @@ void PID1983Controller::SetAbsoluteTolerance(float absTolerance) {
  */
 bool PID1983Controller::OnTarget() {
 	bool temp;
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		switch (m_toleranceType) {
 			case kPercentTolerance:
-			temp = fabs(GetError()) < (m_tolerance / 100 * (m_maximumInput - m_minimumInput));
-			break;
+				temp = fabs(GetError()) < (m_tolerance / 100 * (m_maximumInput - m_minimumInput));
+				break;
 			case kAbsoluteTolerance:
-			temp = fabs(GetError()) < m_tolerance;
-			break;
+				temp = fabs(GetError()) < m_tolerance;
+				break;
 			//TODO: this case needs an error
 			case kNoTolerance:
-			temp = false;
+				temp = false;
+				break;
+			default:
+				//TODO what goes here?
+				break;
 		}
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 	return temp;
 }
 
@@ -491,11 +460,9 @@ bool PID1983Controller::OnTarget() {
  * Begin running the PID1983Controller
  */
 void PID1983Controller::Enable() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_enabled = true;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (m_table != NULL) {
 		m_table->PutBoolean("enabled", true);
@@ -506,12 +473,10 @@ void PID1983Controller::Enable() {
  * Stop running the PID1983Controller, this sets the output to zero before stopping.
  */
 void PID1983Controller::Disable() {
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_pidOutput->PIDWrite(0);
 		m_enabled = false;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 
 	if (m_table != NULL) {
 		m_table->PutBoolean("enabled", false);
@@ -523,11 +488,9 @@ void PID1983Controller::Disable() {
  */
 bool PID1983Controller::IsEnabled() {
 	bool enabled;
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		enabled = m_enabled;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 	return enabled;
 }
 
@@ -537,13 +500,11 @@ bool PID1983Controller::IsEnabled() {
 void PID1983Controller::Reset() {
 	Disable();
 
-	CRITICAL_REGION(m_semaphore)
-	{
+	pthread_mutex_lock(&m_mutex);
 		m_prevError = 0;
 		m_totalError = 0;
 		m_result = 0;
-	}
-	END_REGION;
+	pthread_mutex_unlock(&m_mutex);
 }
 
 std::string PID1983Controller::GetSmartDashboardType() {

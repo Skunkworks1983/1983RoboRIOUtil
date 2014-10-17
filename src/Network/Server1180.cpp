@@ -11,12 +11,13 @@
 
 Server1180 *Sok;
 
-void doblocked()
+void * doblocked(void * serverArg)
 {
-	Sok->ClientConnect(); // Never leaves.
+	Server1180 * srv = (Server1180*) serverArg;
+	srv->ClientConnect(); // Never leaves.
 }
 
-Server1180::Server1180(PacketHandler tHandler, void * ptr, bool showstuff)
+Server1180::Server1180(PacketHandler tHandler, void * ptr, bool showstuff) : writeMutex(PTHREAD_MUTEX_INITIALIZER)
 {
 	handlerObj = ptr;
 	handler = tHandler;
@@ -28,8 +29,9 @@ Server1180::Server1180(PacketHandler tHandler, void * ptr, bool showstuff)
 
 	if ((listener = socket(AF_INET, SOCK_STREAM, 0)) == -1)
 	{ // Should never fail.
-		if (spewcerr)
+		if (spewcerr) {
 			cerr<<"Server listener create Error"<<endl;
+		}
 		return;
 	}
 
@@ -41,31 +43,33 @@ Server1180::Server1180(PacketHandler tHandler, void * ptr, bool showstuff)
 	sin.sin_port = htons(PORT);
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	int one;
+	int one = 1;
 	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (char *) &one, sizeof (one));
 
 	// bind can fail if socket is still out there listening.
 	// This scenario happens when loading new code without reboot.
 	if (bind(listener, (struct sockaddr *) &sin, sizeof(sin)) == -1)
 	{
-		if (spewcerr)
+		if (spewcerr) {
 			cerr<<"Bind failed must still be running from before."<<endl;
+		}
 		return;
 	}
 
 	listen(listener, 1); // Listen for just one connection.
 
-	if ((tid = taskSpawn("SocketComm", 100, 0, 10000, (FUNCPTR) doblocked, 0,
-			0, 0, 0, 0, 0, 0, 0, 0, 0)) == ERROR)
-		if (spewcerr)
+	if (pthread_create(&sokThread, NULL, doblocked, this) != 0) {
+		if (spewcerr) {
 			cerr<<"Task creation error do_often Task "<<errno<<endl;
+		}
+	}
 }
 
 // Destructor.  Doubtful that it ever gets called.
 
 Server1180::~Server1180()
 {
-	taskDelete(tid); // Kill the waiting sockets.
+	pthread_cancel(sokThread); // Kill the waiting sockets (but it might not actually)
 	close(connsock);
 	close(listener);
 }
@@ -88,11 +92,12 @@ int Server1180::GetData(char *p)
 
 int Server1180::SendData(char *p)
 {
-	if (!Connected())
+	if (!Connected()) {
 		return 0;
-	taskSuspend(tid);
+	}
+	pthread_mutex_lock(&writeMutex);
 	int writ= write(connsock, p, strlen(p));
-	taskResume(tid);
+	pthread_mutex_unlock(&writeMutex);
 	return writ;
 }
 
@@ -109,26 +114,30 @@ bool Server1180::Connected()
 
 void Server1180::ClientConnect()
 {
-	if (spewcerr)
+	if (spewcerr) {
 		cerr<<"Client connect top only see this message once"<<endl;
+	}
 
 	while (1)
 	{
-		if (spewcerr)
+		if (spewcerr) {
 			cerr<<"while 1 see this every round connsock "<<connsock<<endl;
+		}
 		if (connsock == -1)
 		{
 			struct sockaddr remoteaddr;
-			int rsize = sizeof(remoteaddr);
+			size_t rsize = sizeof(remoteaddr);
 			connsock = accept(listener, &remoteaddr, &rsize);
-			if (spewcerr)
+			if (spewcerr) {
 				cerr<<"Accepted connsock "<<connsock<<endl;
+			}
 		} else
 		{
 			int ret = read(connsock, data, BUFLEN);
 
-			if (ret < 0)
+			if (ret < 0) {
 				connsock = -1;
+			}
 
 			else if (ret == 0) // Other end hung up.
 			{
@@ -141,8 +150,9 @@ void Server1180::ClientConnect()
 			else
 			{
 				data[ret]=0;
-				if (spewcerr)
+				if (spewcerr) {
 					cerr<<"Got "<<ret<<" bytes: "<<data<<endl;
+				}
 				numbytes = ret;
 				//Got data, if handler is good, handle!
 				if (handler != NULL)

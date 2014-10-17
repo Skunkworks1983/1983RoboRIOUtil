@@ -19,6 +19,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <pthread.h>
 
 #define BUFLEN 512
 #define PORT 1180
@@ -47,6 +48,8 @@ private:
 	char data[BUFLEN+1]; // Leave space for a null, always.
 	int numbytes; // Number of bytes to copy in when GetData called.
 	int tid; // Spawned task id, needed to suspend when writing.
+	pthread_t sokThread;
+	pthread_mutex_t writeMutex;
 };
 
 #endif

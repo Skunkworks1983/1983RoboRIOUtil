@@ -1,12 +1,12 @@
 #include "SolenoidPair.h"
 
-SolenoidPair::SolenoidPair(UINT32 a, UINT32 b) {
+SolenoidPair::SolenoidPair(uint32_t a, uint32_t b) {
 	this->a = new Solenoid(a);
 	this->b = new Solenoid(b);
 	LiveWindow::GetInstance()->AddActuator("DoubleSolenoid",
 			SensorBase::GetDefaultSolenoidModule(), a, this);
 }
-SolenoidPair::SolenoidPair(UINT8 m, UINT32 a, UINT32 b) {
+SolenoidPair::SolenoidPair(uint8_t m, uint32_t a, uint32_t b) {
 	this->a = new Solenoid(m, a);
 	this->b = new Solenoid(m, b);
 	LiveWindow::GetInstance()->AddActuator("DoubleSolenoid", m, a, this);

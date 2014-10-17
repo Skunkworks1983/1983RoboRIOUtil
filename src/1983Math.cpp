@@ -1,5 +1,5 @@
-#include "Math.h"
-#include <math.h>
+#include "1983Math.h"
+#include <cmath>
 
 float fmin(float a, float b) {
 	return a < b ? a : b;

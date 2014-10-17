@@ -5,14 +5,14 @@
 #include "LiveWindow/LiveWindowSendable.h"
 #include "SensorBase.h"
 
-class AnalogChannel;
+class AnalogInput;
 
 #define ANALOG_POT_AVERAGE_LENGTH (5)
 #define ANALOG_POT_RATE_SAMPLE_PERIOD (50.0)
 
 class AnalogPot : public PIDSource, public LiveWindowSendable, public SensorBase {
 private:
-	AnalogChannel *backend;
+	AnalogInput *backend;
 	float a, b, c;
 	
 	float pTime, pAngle;
@@ -23,7 +23,7 @@ private:
 	
 	ITable *m_table;
 
-	void InitAnalogPot(uint8_t moduleNumber, uint32_t channel);
+	void InitAnalogPot(uint32_t channel);
 public:
 	/*
 	 * @brief Is a replacement to the potentiometer in WPILib, adds 
@@ -31,7 +31,6 @@ public:
 	 * @param moduleNumber The digital sidecar it's on
 	 * @param channel The channel number of the pot
 	 */
-	AnalogPot(uint8_t moduleNumber, uint32_t channel);
 	AnalogPot(uint32_t channel);
 
 	/**

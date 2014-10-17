@@ -23,7 +23,7 @@ float DualLiveSpeed::Get() {
 			+ (b != NULL ? (reverseB ? -0.5 : 0.5) * b->Get() : 0);
 }
 
-void DualLiveSpeed::Set(float f, UINT8 syncGroup) {
+void DualLiveSpeed::Set(float f, uint8_t syncGroup) {
 	a->Set(f, syncGroup);
 	if (b != NULL) {
 		b->Set(reverseB ? -f : f, syncGroup);

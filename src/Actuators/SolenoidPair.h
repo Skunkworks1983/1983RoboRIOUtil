@@ -27,8 +27,8 @@ public:
 	 * @param PIDOutput1
 	 * @param PIDOutput2
 	 */
-	SolenoidPair(UINT32 a, UINT32 b);
-	SolenoidPair(UINT8 m, UINT32 a, UINT32 b);
+	SolenoidPair(uint32_t a, uint32_t b);
+	SolenoidPair(uint8_t m, uint32_t a, uint32_t b);
 	virtual ~SolenoidPair();
 	virtual void Set(bool state);
 	virtual int Get();

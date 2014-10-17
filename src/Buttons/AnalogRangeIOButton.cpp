@@ -12,6 +12,6 @@ AnalogRangeIOButton::~AnalogRangeIOButton() {
 }
 
 bool AnalogRangeIOButton::Get() {
-	double volts = DriverStation::GetInstance()->GetEnhancedIO().GetAnalogIn(port);
+	double volts = DriverStation::GetInstance()->GetBatteryVoltage();
 	return volts >= lowThreshold && volts <= highThreshold;
 }

@@ -1,5 +1,5 @@
 #include "ValueChangeTrigger.h"
-#include <math.h>
+#include <cmath>
 
 ValueChangeTrigger::ValueChangeTrigger(GET_DOUBLE getValue, double changeThreshold) {
 	this->changeThreshold = changeThreshold;

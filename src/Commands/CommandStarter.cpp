@@ -3,7 +3,7 @@
 #include "Commands/Command.h"
 #include "Commands/Subsystem.h"
 #include "Commands/Scheduler.h"
-#include "../../Utils/Time.h"
+#include "../Time.h"
 
 CommandStarter::CommandStarter(CreateCommand create, bool waitForRequirements,
 		double maxWait) :

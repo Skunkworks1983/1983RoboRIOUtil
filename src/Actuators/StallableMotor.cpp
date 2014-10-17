@@ -1,5 +1,5 @@
 #include "StallableMotor.h"
-#include <math.h>
+#include <cmath>
 #include <vector>
 #include "../Time.h"
 #include "../Logger.h"
@@ -40,10 +40,12 @@ StallableMotor *StallableMotor::setPotSource(AnalogPot *enc) {
 }
 
 StallableMotor::~StallableMotor() {
-	std::vector<StallableMotor*>::iterator it = std::find(
-			StallableMotor::motors.begin(), StallableMotor::motors.end(), this);
-	if (it != StallableMotor::motors.end()) {
-		StallableMotor::motors.erase(it);
+	std::vector<StallableMotor*>::iterator it;
+	for(it = StallableMotor::motors.begin(); it != StallableMotor::motors.end(); it++) {
+		if (*it == this) {
+			StallableMotor::motors.erase(it);
+			break;
+		}
 	}
 }
 
@@ -103,7 +105,7 @@ void StallableMotor::updateController() {
 	}
 }
 
-void StallableMotor::Set(float speed, UINT8 syncGroup) {
+void StallableMotor::Set(float speed, uint8_t syncGroup) {
 	this->cacheSpeed = speed;
 	this->cacheSyncGroup = syncGroup;
 }

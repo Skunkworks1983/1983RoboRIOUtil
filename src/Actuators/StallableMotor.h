@@ -9,7 +9,7 @@ private:
 	Encoder *stallEncoder;
 	AnalogPot *stallPot;
 	float cacheSpeed;
-	UINT8 cacheSyncGroup;
+	uint8_t cacheSyncGroup;
 	double stallStart;
 	double stallTimeThreshold;
 	double stallTimeRefresh;
@@ -35,7 +35,7 @@ public:
 	StallableMotor *setPotSource(AnalogPot *pot);
 	StallableMotor *setEncoderSource(Encoder *pot);
 	~StallableMotor();
-	virtual void Set(float speed, UINT8 syncGroup = 0);
+	virtual void Set(float speed, uint8_t syncGroup = 0);
 	virtual float Get();
 	virtual void Disable();
 	bool isStalled();
